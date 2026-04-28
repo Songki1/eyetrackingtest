@@ -8,21 +8,21 @@
     <script src="https://unpkg.com/@jspsych/plugin-preload@2.1.0"></script>
     <link href="https://unpkg.com/jspsych@8.2.3/css/jspsych.css" rel="stylesheet" type="text/css" />
     <script src="WebGazer.js"></script>
-    <script src="https://unpkg.com/@jspsych/extension-webgazer@1.1.0"></script> 
+    <script src="https://unpkg.com/@jspsych/extension-webgazer@2.1.0"></script> 
     <script src="https://unpkg.com/@jspsych/plugin-webgazer-calibrate@2.1.0"></script>
   </head>
   <body></body>
   <script>
 
-    /* initialize jsPsych */
+/* initialize jsPsych */
 var jsPsych = initJsPsych({
   extensions: [
     {
       type: jsPsychExtensionWebgazer,
       params: { 
-        show_video_feed: true,    // ★ 이거! 카메라 화면을 왼쪽 상단에 띄웁니다.
+        show_video_feed: true,    // ★ 이게 핵심! 카메라 화면을 강제로 띄웁니다.
         show_face_overlay: true,  // 얼굴 가이드 라인을 보여줍니다.
-        show_gaze_dot: true       // 내 눈이 어디 보고 있는지 빨간 점으로 보여줍니다.
+        show_gaze_dot: true       // 빨간 점으로 내 시선 위치를 보여줍니다.
       }
     }
   ],
