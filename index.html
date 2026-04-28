@@ -15,9 +15,16 @@
   <script>
 
     /* initialize jsPsych */
-    var jsPsych = initJsPsych({
+var jsPsych = initJsPsych({
   extensions: [
-    {type: jsPsychExtensionWebgazer} // "이 실험은 웹게이저를 씁니다"라고 등록
+    {
+      type: jsPsychExtensionWebgazer,
+      params: { 
+        show_video_feed: true,    // ★ 이거! 카메라 화면을 왼쪽 상단에 띄웁니다.
+        show_face_overlay: true,  // 얼굴 가이드 라인을 보여줍니다.
+        show_gaze_dot: true       // 내 눈이 어디 보고 있는지 빨간 점으로 보여줍니다.
+      }
+    }
   ],
   on_finish: function() {
     jsPsych.data.displayData();
