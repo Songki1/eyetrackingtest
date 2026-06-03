@@ -55,6 +55,10 @@
             object-fit: contain;
             margin-left: 5%;
         }
+
+        /* 정확도 피드백 화면용 간단한 스타일 */
+        .acc-box { font-size: 1.2em; line-height: 1.8; }
+        .acc-box strong { color: #0E5FD5; }
     </style>
 </head>
 <body>
@@ -64,7 +68,7 @@
 <script>
     var jsPsych = initJsPsych({
         extensions: [
-            {type: jsPsychExtensionWebgazer}
+            {type: jsPsychExtensionWebgazer}   // ★★★★WebGazer 확장 등록
         ],
         on_finish: function() {
             // 실험 종료 시 JSON 형식으로 데이터 다운로드
@@ -258,7 +262,76 @@
         }
     }
 
+    // ========== [추가] 시선 추적 검증(Validation) ==========
+    // 보정이 "얼마나 잘 됐는지"를 실제로 측정하는 단계입니다.
+    // 이 단계가 있어야 정확도(percent_in_roi, average_offset)가 데이터에 기록됩니다.
+    var validation = {
+        type: jsPsychWebgazerValidate,
+        validation_points: selectedPoints,        // 보정에 쓴 같은 점들로 검증
+        validation_point_coordinates: 'percent',  // 점 좌표를 화면 % 단위로 해석
+        roi_radius: 200,                           // '맞았다'고 인정할 반경(px). 작을수록 엄격
+        time_to_saccade: 1000,                     // 점으로 시선을 옮길 시간(ms)
+        validation_duration: 2000,                 // 각 점에서 시선을 모으는 시간(ms)
+        randomize_validation_order: false,
+        show_validation_data: true,                // 검증 후 시선 분포 시각화 화면을 자동으로 보여줌
+        data: { phase: 'validation' },             // 나중에 이 데이터만 골라내기 위한 표식(태그)
+        on_start: function() {
+            // 검증 중에도 빨간 점이 따라오도록 리스너를 다시 켬
+            document.getElementById('gaze-dot').style.display = 'block';
+            if (typeof webgazer !== 'undefined' && window.gazeListener) {
+                webgazer.setGazeListener(window.gazeListener);
+            }
+        },
+        on_finish: function() {
+            if (typeof webgazer !== 'undefined') {
+                webgazer.clearGazeListener();
+            }
+        }
+    }
+
+    // ========== [추가] 정확도 피드백 화면 ==========
+    // 위 검증 단계가 만들어 준 숫자를 직접 계산해서 사람이 읽기 쉽게 보여줍니다.
+    var validation_feedback = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: function() {
+            // 방금 끝난 validation 단계의 데이터 1줄을 가져옴
+            var v = jsPsych.data.get().filter({phase: 'validation'}).last(1).values()[0];
+
+            // 안전장치: 데이터가 없으면 안내만 표시
+            if (!v || !v.percent_in_roi) {
+                return '<p>검증 데이터를 읽지 못했습니다. (확실하지 않음 — 콘솔 로그를 확인하세요.)</p>';
+            }
+
+            // percent_in_roi: 각 점에서 '허용 반경 안에 들어온 시선 비율(%)' → 높을수록 정확
+            var roi = v.percent_in_roi;                                   // 예: [88, 92, 75, ...]
+            var meanRoi = roi.reduce(function(a, b){ return a + b; }, 0) / roi.length;
+
+            // average_offset: 각 점의 평균 오차 객체 {x, y, r}. r = 실제 점과의 거리(px) → 낮을수록 정확
+            var off = v.average_offset;                                   // 예: [{x,y,r}, ...]
+            var meanOffset = off.reduce(function(a, b){ return a + b.r; }, 0) / off.length;
+
+            // 정확도 등급 판정 (아래 기준 숫자는 예시이므로 본인 연구 기준에 맞게 조정 가능)
+            var grade;
+            if (meanRoi >= 70)      grade = '양호 ✅ — 본 실험을 진행해도 좋습니다.';
+            else if (meanRoi >= 50) grade = '보통 ⚠️ — 가능하면 다시 보정하길 권합니다.';
+            else                    grade = '낮음 ❌ — 머리 위치를 고정하고 다시 보정해 주세요.';
+
+            return '<div class="acc-box">' +
+                   '<h2>캘리브레이션 정확도 결과</h2>' +
+                   '<p>허용 반경 안 시선 비율(평균): <strong>' + meanRoi.toFixed(1) + '%</strong></p>' +
+                   '<p>평균 시선 오차: <strong>' + meanOffset.toFixed(1) + ' px</strong></p>' +
+                   '<p>판정: <strong>' + grade + '</strong></p>' +
+                   '</div>';
+        },
+        choices: ['계속하기'],
+        on_start: function() {
+            // 피드백 화면에서는 빨간 점을 숨김
+            document.getElementById('gaze-dot').style.display = 'none';
+        }
+    }
+
     // ========== 캘리브레이션 완료 후 빨간 점 숨기기 ==========
+    // (참고: 위 validation_feedback가 '완료 안내' 역할을 겸하므로, 이 단계는 지워도 무방합니다.)
     var hide_gaze_dot = {
         type: jsPsychHtmlButtonResponse,
         stimulus: '<p>캘리브레이션이 완료되었습니다!</p>',
